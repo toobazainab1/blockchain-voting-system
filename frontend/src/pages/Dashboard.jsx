@@ -3,34 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar, { AuroraBg } from '../components/Navbar';
 import Footer from '../components/Footer';
 
-const ELECTIONS = [
-  {
-    _id: '1', category: 'Student Council',
-    title: 'General Student Council Election 2026',
-    status: 'open', totalCandidates: 4, totalVoters: 1240, votedCount: 830,
-    endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    description: 'Vote for your student council president and representatives for the 2026 academic year.',
-    hasVoted: false, integrityScore: 98.7,
-  },
-  {
-    _id: '2', category: 'Faculty',
-    title: 'Faculty Representative Vote — Spring 2026',
-    status: 'open', totalCandidates: 3, totalVoters: 560, votedCount: 210,
-    endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    description: 'Elect your faculty representative for the academic board.',
-    hasVoted: false, integrityScore: 99.2,
-  },
-  {
-    _id: '3', category: 'Department',
-    title: 'Departmental Committee Election — F23',
-    status: 'closed', totalCandidates: 5, totalVoters: 320, votedCount: 320,
-    endDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    description: 'Election for departmental committee positions. Voting has closed.',
-    hasVoted: true, integrityScore: 100,
-    winner: { name: 'Ahmed Raza', party: 'Progress Alliance', pct: 38, avatarCls: 'avatar-v' },
-  },
-];
-
+const API = 'http://localhost:5000/api';
 const CATEGORIES = ['All', 'Student Council', 'Faculty', 'Department'];
 
 function getInitials(name) {
@@ -71,9 +44,9 @@ function Countdown({ endDate }) {
 }
 
 function IntegrityBadge({ score }) {
-  const color = score >= 99 ? 'var(--emerald)' : score >= 95 ? 'var(--amber)' : 'var(--rose)';
-  const bg    = score >= 99 ? 'rgba(16,185,129,0.1)' : score >= 95 ? 'rgba(245,158,11,0.1)' : 'rgba(244,63,94,0.1)';
-  const border= score >= 99 ? 'rgba(16,185,129,0.25)' : score >= 95 ? 'rgba(245,158,11,0.25)' : 'rgba(244,63,94,0.25)';
+  const color  = score >= 99 ? 'var(--emerald)' : score >= 95 ? 'var(--amber)' : 'var(--rose)';
+  const bg     = score >= 99 ? 'rgba(16,185,129,0.1)' : score >= 95 ? 'rgba(245,158,11,0.1)' : 'rgba(244,63,94,0.1)';
+  const border = score >= 99 ? 'rgba(16,185,129,0.25)' : score >= 95 ? 'rgba(245,158,11,0.25)' : 'rgba(244,63,94,0.25)';
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: '0.72rem', fontWeight: 700, color, letterSpacing: '0.3px' }}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
@@ -85,13 +58,15 @@ function IntegrityBadge({ score }) {
 }
 
 function ElectionCard({ election, onVote, onResults, onAudit, onCompare }) {
-  const turnout = Math.round((election.votedCount / election.totalVoters) * 100);
+  const turnout = election.totalVoters > 0
+    ? Math.round((election.votedCount / election.totalVoters) * 100)
+    : 0;
   return (
     <div className="election-card fade-in">
       <div className="election-card-left">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div className="election-card-cat">{election.category}</div>
-          <IntegrityBadge score={election.integrityScore} />
+          <IntegrityBadge score={election.integrityScore || 99} />
         </div>
         <div className="election-card-title">{election.title}</div>
         <div className="election-card-desc">{election.description}</div>
@@ -101,17 +76,17 @@ function ElectionCard({ election, onVote, onResults, onAudit, onCompare }) {
             : <span className="badge badge-closed">Closed</span>}
           {election.hasVoted && <span className="badge badge-voted">Voted</span>}
           <span className="badge" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text3)', border: '1px solid var(--border)' }}>
-            {election.totalCandidates} candidates
+            {election.totalCandidates || 0} candidates
           </span>
         </div>
         <div className="turnout-bar-wrap">
-          <div className="turnout-label">TURNOUT {turnout}% — {election.votedCount.toLocaleString()} / {election.totalVoters.toLocaleString()}</div>
+          <div className="turnout-label">TURNOUT {turnout}% — {(election.votedCount||0).toLocaleString()} / {(election.totalVoters||0).toLocaleString()}</div>
           <div className="turnout-bar"><div className="turnout-fill" style={{ width: `${turnout}%` }} /></div>
         </div>
         {election.status === 'open' && <Countdown endDate={election.endDate} />}
         {election.status === 'closed' && election.winner && (
           <div className="winner-banner">
-            <div className={`winner-avatar-sm ${election.winner.avatarCls}`}>
+            <div className={`winner-avatar-sm ${election.winner.avatarCls || 'avatar-v'}`}>
               {getInitials(election.winner.name)}
             </div>
             <div>
@@ -141,13 +116,57 @@ function ElectionCard({ election, onVote, onResults, onAudit, onCompare }) {
 function Dashboard() {
   const navigate = useNavigate();
   const voter = JSON.parse(localStorage.getItem('voter') || '{}');
-  const [elections] = useState(ELECTIONS);
+  const token = localStorage.getItem('token');
+  const [elections, setElections] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
+
+  useEffect(() => {
+    const fetchElections = async () => {
+      try {
+        // Fetch elections from API
+        const res = await fetch(`${API}/elections`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!data.success) return;
+
+        // Check which elections this voter has voted in
+        const votedIn = voter.votedIn || [];
+
+        // Fetch candidate counts for each election
+        const enriched = await Promise.all(data.elections.map(async (e) => {
+          try {
+            const cRes = await fetch(`${API}/candidates?electionId=${e._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const cData = await cRes.json();
+            const totalCandidates = cData.success ? cData.candidates.length : 0;
+            return {
+              ...e,
+              totalCandidates,
+              hasVoted: votedIn.includes(e._id),
+              integrityScore: 99,
+              totalVoters: e.totalVoters || 1000,
+            };
+          } catch {
+            return { ...e, totalCandidates: 0, hasVoted: votedIn.includes(e._id), integrityScore: 99 };
+          }
+        }));
+
+        setElections(enriched);
+      } catch (err) {
+        console.error('Failed to fetch elections:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchElections();
+  }, [token]); // eslint-disable-line
 
   const filtered = activeCategory === 'All' ? elections : elections.filter(e => e.category === activeCategory);
   const openCount = elections.filter(e => e.status === 'open').length;
   const votedCount = elections.filter(e => e.hasVoted).length;
-  const totalVoters = 2120;
   const initials = voter.name ? voter.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
   const avatarCls = voter.avatarId ? `avatar-${voter.avatarId}` : 'avatar-v';
 
@@ -184,7 +203,7 @@ function Dashboard() {
           <div className="hero-stats">
             {[
               { val: openCount, lbl: 'Live Elections' },
-              { val: `${totalVoters.toLocaleString()}+`, lbl: 'Registered Voters' },
+              { val: `${elections.length}`, lbl: 'Total Elections' },
               { val: votedCount, lbl: 'Your Votes Cast' },
               { val: '100%', lbl: 'Tamper-Proof' },
             ].map(s => (
@@ -223,8 +242,8 @@ function Dashboard() {
                 Icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
               { label: 'Votes Cast', value: votedCount, sub: 'by you total', iconCls: 'stat-icon-emerald',
                 Icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> },
-              { label: 'Registered Voters', value: totalVoters.toLocaleString(), sub: 'on platform', iconCls: 'stat-icon-cyan',
-                Icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> },
+              { label: 'Total Elections', value: elections.length, sub: 'on platform', iconCls: 'stat-icon-cyan',
+                Icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> },
               { label: 'Avg Integrity', value: '99.3%', sub: 'blockchain verified', iconCls: 'stat-icon-rose',
                 Icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
             ].map(s => (
@@ -246,20 +265,27 @@ function Dashboard() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {filtered.map(e => (
-              <ElectionCard key={e._id} election={e}
-                onVote={id => navigate(`/ballot/${id}`)}
-                onResults={id => navigate(`/results/${id}`)}
-                onAudit={id => navigate(`/audit/${id}`)}
-                onCompare={id => navigate(`/compare/${id}`)} />
-            ))}
-            {filtered.length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text3)' }}>
-                No elections in this category.
-              </div>
-            )}
-          </div>
+          {loading ? (
+            <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text3)' }}>
+              <div className="spinner" style={{ margin: '0 auto 1rem' }} />
+              Loading elections from blockchain...
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {filtered.map(e => (
+                <ElectionCard key={e._id} election={e}
+                  onVote={id => navigate(`/ballot/${id}`)}
+                  onResults={id => navigate(`/results/${id}`)}
+                  onAudit={id => navigate(`/audit/${id}`)}
+                  onCompare={id => navigate(`/compare/${id}`)} />
+              ))}
+              {filtered.length === 0 && !loading && (
+                <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text3)' }}>
+                  No elections in this category.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <Footer />
