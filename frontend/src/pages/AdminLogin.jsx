@@ -80,9 +80,7 @@ function AdminLogin() {
             {loading ? <><div className="spinner" />Signing in...</> : <><div className="btn-shimmer" />Sign In as Admin</>}
           </button>
 
-          <div style={{ marginTop: '1.5rem', padding: '12px', background: 'rgba(124,92,252,0.06)', border: '1px solid rgba(124,92,252,0.15)', borderRadius: 'var(--r-sm)', fontSize: '0.78rem', color: 'var(--text3)', textAlign: 'center', lineHeight: 1.7 }}>
-            Credentials: <strong style={{ color: 'var(--violet2)' }}>admin</strong> / <strong style={{ color: 'var(--violet2)' }}>admin123</strong>
-          </div>
+   
 
           <div className="sec-footer">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
