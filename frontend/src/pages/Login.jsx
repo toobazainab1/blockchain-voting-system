@@ -125,9 +125,9 @@ function Login() {
           )}
 
           <div style={{ marginTop: '1.5rem', padding: '12px', background: 'rgba(124,92,252,0.06)', border: '1px solid rgba(124,92,252,0.15)', borderRadius: 'var(--r-sm)', fontSize: '0.78rem', color: 'var(--text3)', textAlign: 'center', lineHeight: 1.7 }}>
-            {role === 'voter'
-              ? <>Demo: register first, then login with your credentials</>
-              : <>Admin: <strong style={{ color: 'var(--violet2)' }}>admin</strong> / <strong style={{ color: 'var(--violet2)' }}>admin123</strong></>}
+{role === 'voter' && (
+  <>Register first, then login with your credentials.</>
+)}
           </div>
 
           <div className="sec-footer">
