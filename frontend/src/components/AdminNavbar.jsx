@@ -19,7 +19,8 @@ function AdminNavbar() {
 
   const logout = () => {
     localStorage.removeItem('adminToken');
-    navigate('/admin/login');
+    localStorage.removeItem('admin');
+    navigate('/bsse-f23b-admin-iiu');
   };
 
   return (

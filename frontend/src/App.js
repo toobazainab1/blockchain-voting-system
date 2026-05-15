@@ -43,12 +43,15 @@ function App() {
         <Route path="/mission"            element={<ProtectedRoute><Mission /></ProtectedRoute>} />
         <Route path="/how-it-works"       element={<ProtectedRoute><HowItWorks /></ProtectedRoute>} />
 
-        {/* Admin */}
-        <Route path="/admin/login"      element={<AdminLogin />} />
+        {/* Admin — secret URL, share only with your team */}
+        <Route path="/bsse-f23b-admin-iiu" element={<AdminLogin />} />
         <Route path="/admin/dashboard"  element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/elections"  element={<AdminRoute><AdminElections /></AdminRoute>} />
         <Route path="/admin/candidates" element={<AdminRoute><AdminCandidates /></AdminRoute>} />
         <Route path="/admin/results"    element={<AdminRoute><AdminResults /></AdminRoute>} />
+
+        {/* Block old admin/login URL */}
+        <Route path="/admin/login" element={<Navigate to="/login" />} />
       </Routes>
     </Router>
   );
